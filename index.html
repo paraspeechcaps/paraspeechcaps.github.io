@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='UTF-8'/>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>ParaSpeechCaps: Scaling Rich Style-Prompted Text-to-Speech Datasets</title>
+<style>
+    :root {
+        --primary-color: #2196F3;
+        --text-color: #333;
+        --border-color: #e0e0e0;
+        --background-color: #ffffff;
+        --card-background: #f8f9fa;
+        --highlight-color: #f0f7ff;
+        --section-spacing: 4rem;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        line-height: 1.5;
+        color: var(--text-color);
+        background-color: var(--background-color);
+        padding: 2rem 0;
+        margin: 0 auto;
+    }
+
+    .container {
+        width: 98%;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    section {
+        margin-bottom: var(--section-spacing);
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .paper-title {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: var(--text-color);
+        margin-bottom: 1.5rem;
+        text-align: center;
+        max-width: 1000px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .abstract-header {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--text-color);
+        text-align: center;
+        margin: 2rem 0 1.5rem;
+    }
+
+    .abstract {
+        max-width: 900px;
+        margin: 0 auto 2rem;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #444;
+        text-align: center;
+        padding: 0 1rem;
+    }
+
+    .abstract p {
+        margin-bottom: 1rem;
+    }
+
+    .abstract strong {
+        color: var(--text-color);
+    }
+
+    .abstract em {
+        font-style: italic;
+    }
+
+    .dataset-section {
+        margin-bottom: var(--section-spacing);
+    }
+
+    .dataset-tabs {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .dataset-tab {
+        padding: 0.8rem 2rem;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin: 0 1rem;
+    }
+
+    .dataset-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .dataset-content {
+        display: none;
+    }
+
+    .dataset-content.active {
+        display: block;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: var(--background-color);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        table-layout: fixed;
+        margin-bottom: 2rem;
+    }
+
+    th, td {
+        padding: 0.8rem;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    th {
+        background-color: var(--card-background);
+        font-weight: 600;
+        color: var(--text-color);
+        padding: 1rem 0.5rem;
+        white-space: nowrap;
+    }
+
+    td {
+        vertical-align: middle;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    .model-ours {
+        font-weight: 700;
+        color: var(--primary-color);
+        position: relative;
+    }
+
+    .model-ours::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 15%;
+        width: 70%;
+        height: 2px;
+        background-color: var(--primary-color);
+        opacity: 0.5;
+    }
+
+    td.model-ours-cell {
+        background-color: var(--highlight-color);
+    }
+
+    .description-cell {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        padding: 0.8rem 0.5rem;
+    }
+
+    .text-cell {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        padding: 0.8rem 0.5rem;
+    }
+
+    .style-tag {
+        border-bottom: 1px solid var(--primary-color);
+        opacity: 0.9;
+    }
+
+    audio {
+        width: 150px;
+        margin: 0.3rem 0;
+    }
+
+    audio::-webkit-media-controls-panel {
+        background-color: var(--card-background);
+    }
+
+    @media (max-width: 1200px) {
+        body {
+            padding: 0.8rem 0;
+        }
+        
+        table {
+            display: block;
+            overflow-x: auto;
+        }
+
+        th, td {
+            min-width: 150px;
+        }
+    }
+
+    .tag-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+        padding: 0.5rem;
+    }
+
+    .tag {
+        background-color: var(--highlight-color);
+        color: var(--primary-color);
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .basic-tag {
+        background-color: #f5f5f5;
+        color: #666;
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .dataset-table td {
+        vertical-align: middle;
+        padding: 1rem 0.5rem;
+    }
+
+    .dataset-table audio {
+        width: 180px;
+    }
+
+    .disclaimer {
+        max-width: 900px;
+        margin: 0 auto;
+        text-align: center;
+        padding: 0 1rem;
+        scroll-margin-top: 2rem;
+    }
+
+    .disclaimer p {
+        font-size: 0.9rem;
+        color: #666;
+        font-style: italic;
+    }
+
+    .disclaimer-link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: normal;
+    }
+
+    .disclaimer-link:hover {
+        text-decoration: underline;
+    }
+
+    .nav-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin: 3rem 0;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+    }
+
+    .nav-tab {
+        color: #666;
+        text-decoration: none;
+        font-size: 1.1rem;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .nav-tab:hover {
+        color: var(--primary-color);
+        background-color: var(--highlight-color);
+    }
+
+    .demo-intro {
+        max-width: 900px;
+        margin: 0 auto 3rem;
+        text-align: center;
+        padding: 0 1rem;
+    }
+
+    .demo-intro p {
+        font-size: 1rem;
+        line-height: 1.6;
+        color: #444;
+    }
+
+    .subtitle {
+        text-align: center;
+        max-width: 900px;
+        margin: 0 auto 2rem;
+        color: #444;
+        padding: 0 1rem;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .model-tabs {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .model-tab {
+        padding: 0.8rem 2rem;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin: 0 1rem;
+    }
+
+    .model-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .model-content {
+        display: none;
+    }
+
+    .model-content.active {
+        display: block;
+    }
+    </style>
+</head>
+<body>
+<div class='container'>
+<section>
+<h1 class='paper-title'>Scaling Rich Style-Prompted Text-to-Speech Datasets</h1>
+<h2 class='abstract-header'>Abstract</h2>
+<div class='abstract'>
+<p>
+We introduce <strong>Para</strong>linguistic <strong>Speech</strong> <strong>Cap</strong>tion<strong>s</strong> (<strong>ParaSpeechCaps</strong>), a large-scale dataset that annotates speech utterances with rich style captions. While rich abstract tags (e.g. <em>guttural, nasal, pained</em>) have been explored in small-scale human-annotated datasets, existing large-scale datasets only cover basic tags (e.g. <em>low-pitched, slow, loud</em>). We combine off-the-shelf text and speech embedders, classifiers and an audio language model to automatically scale rich tag annotations for the first time. ParaSpeechCaps covers a total of 59 style tags, including both speaker-level intrinsic tags and utterance-level situational tags. It consists of 282 hours of human-labelled data (PSC-Base) and 2450 hours of automatically annotated data (PSC-Scaled). We finetune Parler-TTS, an open-source style-prompted TTS model, on ParaSpeechCaps, and achieve improved style consistency (+7.9% Consistency MOS) and speech quality (+15.5% Naturalness MOS) over the best performing baseline that combines existing rich style tag datasets. We ablate several of our dataset design choices to lay the foundation for future work in this space. ParaSpeechCaps and our trained models will be open-sourced.
+</p>
+</div>
+</section>
+<section>
+<div class='demo-intro'>
+<p>Below you'll find two interactive demos showcasing our work. First, we present our Style Controlled TTS Experiments Demo comparing different model outputs. Following that, you can explore the ParaSpeechCaps Dataset Demo featuring examples from both our human-annotated and automatically-annotated datasets. For easy visualization, we underline all rich style tags in the style prompts.</p>
+</div>
+</section>
+<section id='model-demo'>
+<h2 class='section-title'>Style Prompted TTS Experiments Demo</h2>
+<p class='subtitle'>Listen to our generated speech samples demonstrating various styles and expressions. We provide both cherry-picked examples showcasing our best results as well as randomly-picked examples. Each row showcases different model outputs for the same input description and input text.</p>
+<div class='model-tabs'>
+<div id='cherry-picked-tab' class='model-tab active' onclick='switchModelTab("cherry-picked")'>Cherry-Picked</div>
+<div id='random-picked-tab' class='model-tab' onclick='switchModelTab("random-picked")'>Randomly-Picked</div>
+</div>
+<div id='cherry-picked-content' class='model-content active'>
+<table>
+<thead>
+<tr>
+<th>Transcription</th>
+<th>Style Prompt</th>
+<th class='model-ours'>🔊 Ours (Scaled)</th>
+<th class='model-ours'>🔊 Ours (Base)</th>
+<th>+LTTSP,Exp,EARS</th>
+<th>+LTTSR</th>
+<th>Parler-TTS</th>
+<th>Ground Truth<a href='#disclaimer' class='disclaimer-link'>*</a></th>
+</tr>
+</thead>
+<tbody>
+<tr><td class='text-cell'>That's my brother. I do agree, though, it wasn't very well-groomed.</td><td class='description-cell'>A man speaks with a <span class='style-tag'>booming</span>, medium-pitched voice in a clear environment, delivering his words at a measured speed.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_355.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_355.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_355.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_355.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_355.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_355.wav'></audio></td></tr>
+<tr><td class='text-cell'>reveal my true intentions in different ways. That's why the Street King Project and SMS</td><td class='description-cell'>A male speaker's speech is distinguished by a <span class='style-tag'>slurred</span> articulation, delivered at a measured pace in a clear environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_214.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_214.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_214.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_214.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_214.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_214.wav'></audio></td></tr>
+<tr><td class='text-cell'>the Grand Slam tennis game has sort of taken over our set that's sort of all the way</td><td class='description-cell'>In a clear environment, a male speaker delivers his words <span class='style-tag'>hesitantly</span> with a measured pace.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_374.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_374.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_374.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_374.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_374.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_374.wav'></audio></td></tr>
+<tr><td class='text-cell'>you know you want to see how far you can push everything and as an artist</td><td class='description-cell'>A low-pitched, <span class='style-tag'>guttural</span> male voice speaks slowly in a clear environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_291.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_291.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_291.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_291.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_291.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_291.wav'></audio></td></tr>
+<tr><td class='text-cell'>most important but the reaction is very similar throughout the world it's really very very similar</td><td class='description-cell'>A man speaks with a measured pace in a clear environment, displaying a distinct <span class='style-tag'>British</span> accent.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_533.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_533.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_533.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_533.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_533.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_533.wav'></audio></td></tr>
+<tr><td class='text-cell'>about God and the people him come from is more Christian, you know. We always</td><td class='description-cell'>A male speaker's voice is clear and delivered at a measured pace in a quiet environment. His speech carries a distinct <span class='style-tag'>Jamaican</span> accent.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_508.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_508.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_508.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_508.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_508.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_508.wav'></audio></td></tr>
+<tr><td class='text-cell'>Was that your landlord?</td><td class='description-cell'>In a clear environment, a male voice speaks with a <span class='style-tag'>sad</span> tone.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_691.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_691.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_691.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_691.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_691.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_691.wav'></audio></td></tr>
+<tr><td class='text-cell'>I mean, to be fair, I did see a UFO, so, you know.</td><td class='description-cell'>A man speaks with a measured pace in a clear environment, his voice carrying a <span class='style-tag'>sleepy</span> tone.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_884.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_884.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_884.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_884.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_884.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_884.wav'></audio></td></tr>
+<tr><td class='text-cell'>Yes, that's what they said. I don't know what you're getting done. What are you getting done? Oh, okay. Yeah.</td><td class='description-cell'>A <span class='style-tag'>frightened</span> woman speaks with a clear and distinct voice.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_938.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_938.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_938.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_938.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_938.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_938.wav'></audio></td></tr>
+<tr><td class='text-cell'>Oh wow, this music is fantastic. You play so well. I could just sit here.</td><td class='description-cell'>A woman speaks slowly in a clear environment, her voice filled with <span class='style-tag'>awe</span>.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_763.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_763.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_763.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_763.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_763.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_763.wav'></audio></td></tr>
+<tr><td class='text-cell'>this is just way too overwhelming. I literally don't know how I'm going to get any of this done on time. I feel so overwhelmed right now. No one is helping me. Everyone's ignoring my calls and my emails. I don't know what I'm supposed to do right now.</td><td class='description-cell'>A woman speaks with a high-pitched voice in a clear environment, conveying a sense of <span class='style-tag'>anxiety</span>.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_967.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_967.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_967.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_967.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_967.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_967.wav'></audio></td></tr>
+<tr><td class='text-cell'>What is wrong with him, Chad?</td><td class='description-cell'>A female speaker's high-pitched voice is clear and carries over a <span class='style-tag'>laughing</span>, unobstructed environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_668.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_668.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_668.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_668.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_668.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_668.wav'></audio></td></tr>
+<tr><td class='text-cell'>The fruit piece, the still lifes, you mean.</td><td class='description-cell'>In a clear environment, a man speaks in a <span class='style-tag'>whispered</span> tone.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_701.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_701.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_701.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_701.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_701.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_701.wav'></audio></td></tr>
+<tr><td class='text-cell'>Ari had to somehow be subservient to Lloyd that would be unbelievable like if Lloyd was the guy who was like running Time Warner you know what I mean like</td><td class='description-cell'>A male speaker with a <span class='style-tag'>husky</span>, low-pitched voice delivers clear speech in a quiet environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_415.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_415.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_415.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_415.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_415.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_415.wav'></audio></td></tr>
+<tr><td class='text-cell'>You know, Joe Bow, hockey mom from Wasilla, if I have an idea that would perhaps make</td><td class='description-cell'>A female speaker's voice is clear and expressed at a measured pace, but carries a high-pitched, <span class='style-tag'>nasal</span> tone, recorded in a quiet environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_223.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_223.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_223.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_223.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_223.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_223.wav'></audio></td></tr>
+</tbody>
+</table>
+</div>
+<div id='random-picked-content' class='model-content'>
+<table>
+<thead>
+<tr>
+<th>Transcription</th>
+<th>Style Prompt</th>
+<th class='model-ours'>🔊 Ours (Scaled)</th>
+<th class='model-ours'>🔊 Ours (Base)</th>
+<th>+LTTSP,Exp,EARS</th>
+<th>+LTTSR</th>
+<th>Parler-TTS</th>
+<th>Ground Truth<a href='#disclaimer' class='disclaimer-link'>*</a></th>
+</tr>
+</thead>
+<tbody>
+<tr><td class='text-cell'>and I felt I had to stand up and fight for what I believed was justice I never stopped to think whether I am a man or a woman or whether what I am doing is right I felt I had to do this I did it I did whatever I thought was right I have lived my life according to</td><td class='description-cell'>In a clear environment, a woman speaks with a measured speed and a medium-pitched, <span class='style-tag'>authoritative</span> voice.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_46.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_46.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_46.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_46.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_46.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_46.wav'></audio></td></tr>
+<tr><td class='text-cell'>I thought he looked familiar. He calls me up. He goes, hi, it's Kurt Ball time. I figured Kurt Ball time to band lead. I didn't know.</td><td class='description-cell'>In a clear environment, a man speaks with a <span class='style-tag'>nasal</span> tone and a high-pitched voice.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_235.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_235.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_235.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_235.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_235.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_235.wav'></audio></td></tr>
+<tr><td class='text-cell'>if you want because I didn't want to do it at all so he talked me into that actually I I</td><td class='description-cell'>A female speaker delivers her words at a measured pace in a clear environment, yet her voice exhibits occasional <span class='style-tag'>vocal-fry</span>.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_268.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_268.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_268.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_268.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_268.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_268.wav'></audio></td></tr>
+<tr><td class='text-cell'>You have to be objective and look at yourself that somehow because you're part of pop culture</td><td class='description-cell'>A male speaker's voice exhibits <span class='style-tag'>vocal</span> fry in a clear environment, delivering his words at a measured speed.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_275.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_275.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_275.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_275.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_275.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_275.wav'></audio></td></tr>
+<tr><td class='text-cell'>He's incredibly impressed on a number of levels. First of all, his life plays out like a Greek tragedy.</td><td class='description-cell'>A man speaks with a <span class='style-tag'>deep</span>, <span class='style-tag'>husky</span> voice in a clear environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_418.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_418.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_418.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_418.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_418.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_418.wav'></audio></td></tr>
+<tr><td class='text-cell'>I have never compromised when it comes to protecting the state's interests or the</td><td class='description-cell'>A female speaker with a medium-pitched voice and an <span class='style-tag'>Indian</span> accent delivers her speech at a measured pace in a clear environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_459.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_459.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_459.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_459.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_459.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_459.wav'></audio></td></tr>
+<tr><td class='text-cell'>where it was meant to be placed which was of course with a great dose of irony so I</td><td class='description-cell'>In a clear environment, a woman speaks with a measured speed and an <span class='style-tag'>Australian</span> accent.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_467.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_467.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_467.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_467.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_467.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_467.wav'></audio></td></tr>
+<tr><td class='text-cell'>I never even know who Marcus Garvey is, who Ellis Lassie is, or who any black man is.</td><td class='description-cell'>A male speaker with a <span class='style-tag'>Jamaican</span> accent delivers his words in a clear environment, maintaining a measured pace and a medium-pitched voice.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_512.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_512.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_512.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_512.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_512.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_512.wav'></audio></td></tr>
+<tr><td class='text-cell'>All the while her skin smoothes, blemishes fade, and wrinkles flatten against tightening skin.</td><td class='description-cell'>A man speaks slowly in a clear environment, his words sounding <span class='style-tag'>confused</span>.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_582.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_582.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_582.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_582.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_582.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_582.wav'></audio></td></tr>
+<tr><td class='text-cell'>Wanna see "The Color Purple" on Broadway?</td><td class='description-cell'>A male speaker's voice is high-pitched and clear, but his speech is <span class='style-tag'>confused</span> and delivered at a measured speed in a quiet environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_591.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_591.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_591.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_591.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_591.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_591.wav'></audio></td></tr>
+<tr><td class='text-cell'>Yes, "The King's Speech" is popular.</td><td class='description-cell'>A female speaks with a clear and measured pace, conveying a sense of <span class='style-tag'>sadness</span> in her voice.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_698.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_698.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_698.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_698.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_698.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_698.wav'></audio></td></tr>
+<tr><td class='text-cell'>Okay, um, you, okay, sure, you can grab one of those, yep, you don't have to leave, uh-huh, okay.</td><td class='description-cell'>In a clear environment, a woman speaks with a <span class='style-tag'>passive</span> tone and at a slow speaking speed.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_791.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_791.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_791.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_791.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_791.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_791.wav'></audio></td></tr>
+<tr><td class='text-cell'>If you tilt the glass, whoa!</td><td class='description-cell'>A woman speaks in a clear and <span class='style-tag'>loud</span> voice in an environment with no discernible background noise.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_906.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_906.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_906.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_906.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_906.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_906.wav'></audio></td></tr>
+<tr><td class='text-cell'>It didn't work. It's not working. It's not enough. I...</td><td class='description-cell'>A female speaker's voice is clear and her speech is delivered at a measured pace in a quiet environment. Her tone, however, conveys <span class='style-tag'>fear</span>.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_926.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_926.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_926.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_926.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_926.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_926.wav'></audio></td></tr>
+<tr><td class='text-cell'>Oh, it hurts. I can't believe you moved that table there. I think I broke my toe. Oh, I might have to go to the ER. I think it's broken. I know they, what can they do for a broken toe?</td><td class='description-cell'>A high-pitched female voice speaks with evident <span class='style-tag'>pain</span> in a clear environment.</td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursScaled_977.wav'></audio></td><td class=' model-ours-cell'><audio controls preload='none' src='audios/OursBase_977.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSPExpEARS_977.wav'></audio></td><td class=''><audio controls preload='none' src='audios/LTTSR_977.wav'></audio></td><td class=''><audio controls preload='none' src='audios/Parler-TTS_977.wav'></audio></td><td class=''><audio controls preload='none' src='audios/GroundTruth_977.wav'></audio></td></tr>
+</tbody>
+</table>
+</div>
+<div id='disclaimer' class='disclaimer'>
+<p>* While all models are prompted with a 'clear environment' tag and tend to adhere to it, ground truth audio comes from our in-the-wild PSC-Base dataset, which may contain background noise.</p>
+</div>
+</section>
+<section id='dataset-demo' class='dataset-section'>
+<h2 class='section-title'>ParaSpeechCaps Dataset Demo</h2>
+<p class='subtitle'>Listen to randomly-sampled examples from our ParaSpeechCaps dataset for a subset of our 59 supported style tags, with both the human-annotated PSC-Base and the automatically-annotated PSC-Scaled available.</p>
+<div class='dataset-tabs'>
+<div id='psc-base-tab' class='dataset-tab active' onclick='switchDatasetTab("psc-base")'>ParaSpeechCaps-Base</div>
+<div id='psc-scaled-tab' class='dataset-tab' onclick='switchDatasetTab("psc-scaled")'>ParaSpeechCaps-Scaled</div>
+</div>
+<div id='psc-base-content' class='dataset-content active'>
+<table class='dataset-table'>
+<thead><tr><th>Audio</th><th>Transcription</th><th>Rich Tags</th><th>Basic Tags</th><th>Style Prompt</th></tr></thead>
+<tbody>
+<tr>
+<td><audio controls preload='none' src='audios/base_0.wav'></audio></td>
+<td class='text-cell'> that for your motivation i mean what keeps you going when you know you have you know family back</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>crisp</span><span class='tag'>flowing</span><span class='tag'>shrill</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>slightly clean environment</span></div></td>
+<td class='description-cell'>A female speaker's voice is <span class='style-tag'>flowing</span> and high-pitched, with a <span class='style-tag'>shrill</span> tone, displaying a <span class='style-tag'>crisp</span> and measured speed. Recorded in a slightly clean environment. (<span class='style-tag'>American</span> accent)</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_1.wav'></audio></td>
+<td class='text-cell'> So it was a lot of fun. I loved it and I'm happy the song came out well. Plus it's a lot of pressure, like the bar is set very high.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>authoritative</span><span class='tag'>booming</span><span class='tag'>deep</span><span class='tag'>husky</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>low-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>slightly noisy environment</span></div></td>
+<td class='description-cell'>In a slightly noisy environment, a <span class='style-tag'>deep</span> and <span class='style-tag'>booming</span> voice of an <span class='style-tag'>American</span> male with a <span class='style-tag'>husky</span> and <span class='style-tag'>authoritative</span> tone speaks at a measured speed, conveying a low-pitched and <span class='style-tag'>confident</span> demeanor.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_2.wav'></audio></td>
+<td class='text-cell'> the emergence of Lily was set against the backdrop of this extraordinary moment of</td>
+<td><div class='tag-container'><span class='tag'>authoritative</span><span class='tag'>british</span><span class='tag'>deep</span><span class='tag'>raspy</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>low-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>very clean environment</span></div></td>
+<td class='description-cell'>A <span class='style-tag'>British</span> male speaks with an <span class='style-tag'>authoritative</span> tone, his <span class='style-tag'>deep</span>, <span class='style-tag'>raspy</span> voice having a low pitch and a measured speed in a very clean environment.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_3.wav'></audio></td>
+<td class='text-cell'> think by getting to choose my artist I really hope it's just someone that it can't be someone that's just an amazing singer because there's a lot of amazing singers it has to be someone that's what's their purpose what do they want to bring to the industry because right now there's so many there's people that are willing to put on the</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>flowing</span><span class='tag'>raspy</span><span class='tag'>slurred</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>fast speed</span><span class='basic-tag'>female</span><span class='basic-tag'>medium-pitched</span><span class='basic-tag'>slightly noisy environment</span></div></td>
+<td class='description-cell'>A female speaker with a <span class='style-tag'>raspy</span>, <span class='style-tag'>American</span> accent delivers her words in a medium-pitched, <span class='style-tag'>flowing</span> tone, speaking fast in a slightly noisy environment. Her speech is slightly <span class='style-tag'>slurred</span>.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_4.wav'></audio></td>
+<td class='text-cell'>When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>enunciated</span><span class='tag'>hesitant</span><span class='tag'>loud</span><span class='tag'>monotonous</span><span class='tag'>punctuated</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>slightly clean environment</span></div></td>
+<td class='description-cell'>A female speaker with a high-pitched voice delivers <span class='style-tag'>enunciated</span> and <span class='style-tag'>punctuated</span> words in an <span class='style-tag'>American</span> accent. Her speech is <span class='style-tag'>loud</span> and produced in a slightly clean environment. The measured speed of her speech is <span class='style-tag'>monotonous</span>, yet she exhibits <span class='style-tag'>hesitancy</span>.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_5.wav'></audio></td>
+<td class='text-cell'> two years, of course, the world's media is known about that, but that's been part of the history of that place forever, which is why we place that story in the heart of our</td>
+<td><div class='tag-container'><span class='tag'>flowing</span><span class='tag'>scottish</span><span class='tag'>silky</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>female</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>medium-pitched</span><span class='basic-tag'>noisy environment</span></div></td>
+<td class='description-cell'>A <span class='style-tag'>Scottish</span> female speaks with a <span class='style-tag'>flowing</span>, <span class='style-tag'>silky</span> voice at a measured speed, recorded in a medium-noisy environment. Her pitch is of a medium height.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_6.wav'></audio></td>
+<td class='text-cell'> It's just that somehow for many many years round robins were the only attractive events around and but recently a couple of attractive Swiss events have come up so and you can see already that many participants open to playing. So it's not like I had some fundamental objection, it's just that's the way it</td>
+<td><div class='tag-container'><span class='tag'>flowing</span><span class='tag'>hesitant</span><span class='tag'>indian</span><span class='tag'>pitchy</span><span class='tag'>slurred</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>medium-pitched</span><span class='basic-tag'>noisy environment</span></div></td>
+<td class='description-cell'>A male speaker with a medium-pitched voice delivers a <span class='style-tag'>flowing</span> <span class='style-tag'>Indian</span> accent, yet his speech is <span class='style-tag'>hesitant</span> and slightly <span class='style-tag'>slurred</span>. The recording takes place in a noisy environment, which adds <span class='style-tag'>pitchiness</span> to his measured, yet inconsistent speed.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_7.wav'></audio></td>
+<td class='text-cell'>Short term memory loss at your age?</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>authoritative</span><span class='tag'>confused</span><span class='tag'>flowing</span><span class='tag'>nasal</span><span class='tag'>singsong</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>environment balanced in clarity</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span></div></td>
+<td class='description-cell'>A male speaker delivers <span class='style-tag'>authoritative</span>, measured statements in a <span class='style-tag'>singsong</span>, high-pitched voice, displaying <span class='style-tag'>confusion</span> at times. The environment is balanced in clarity, allowing for a <span class='style-tag'>flowing</span> <span class='style-tag'>American</span> accent with a distinct <span class='style-tag'>nasal</span> quality.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_8.wav'></audio></td>
+<td class='text-cell'> This is some major consp- this is some major conspiracy thing, because literally it's that shit is- that shit is following you wherever you go. You might not notice it, because you're so used to the smell, but that shit is around on every hike, it is around at every watering hole, it is at every campsite, it is right next to your snack bag, it is everywhere.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>angry</span><span class='tag'>animated</span><span class='tag'>flowing</span><span class='tag'>singsong</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>slightly clean environment</span></div></td>
+<td class='description-cell'>A male speaker delivers an <span class='style-tag'>animated</span>, <span class='style-tag'>flowing</span>, and <span class='style-tag'>singsong</span> speech with a high-pitched voice, expressing <span class='style-tag'>anger</span>. The recording takes place in a slightly clean environment, and the speaker maintains a measured speed throughout. This <span class='style-tag'>American</span> accent is evident in his speech.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_9.wav'></audio></td>
+<td class='text-cell'> oh i just stubbed my toe on the side of the bed oh my gosh i am in severe pain oh my god i hope this does not turn red and swollen</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>enunciated</span><span class='tag'>hesitant</span><span class='tag'>monotonous</span><span class='tag'>pained</span><span class='tag'>punctuated</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>slightly clean environment</span><span class='basic-tag'>slow speed</span></div></td>
+<td class='description-cell'>A female speaker's voice is high-pitched and <span class='style-tag'>monotonous</span>, with <span class='style-tag'>enunciated</span> and <span class='style-tag'>punctuated</span> words in a slightly clean environment. Her speech is <span class='style-tag'>hesitant</span>, <span class='style-tag'>pained</span>, and delivered at a slow speed, with an <span class='style-tag'>American</span> accent.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_10.wav'></audio></td>
+<td class='text-cell'>I just love how you can play guitar. You're so impressive. I admire your abilities so much.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>awed</span><span class='tag'>crisp</span><span class='tag'>deep</span><span class='tag'>pitchy</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>slightly clean environment</span><span class='basic-tag'>slow speed</span></div></td>
+<td class='description-cell'>A male speaker with a <span class='style-tag'>deep</span>, slow speech delivery expresses <span class='style-tag'>awe</span> in a <span class='style-tag'>crisp</span>, slightly clean environment. His voice has a high-pitched, <span class='style-tag'>pitchy</span> quality, characteristic of an <span class='style-tag'>American</span> accent.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_11.wav'></audio></td>
+<td class='text-cell'>Mmm that chocolate fudge lava cake looks devine. I want that car so badly. I can't wait to see you again.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>desirous</span><span class='tag'>flowing</span><span class='tag'>hesitant</span><span class='tag'>nasal</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>environment balanced in clarity</span><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>slow speed</span></div></td>
+<td class='description-cell'>A female speaker's voice is <span class='style-tag'>flowing</span> yet <span class='style-tag'>hesitant</span>, displaying a <span class='style-tag'>nasal</span>, high-pitched tone. Her speech is delivered at a slow speed in an <span class='style-tag'>American</span> accent, ensuring a balanced environment for clear enunciation. The <span class='style-tag'>desirous</span> nature of her emotion is evident.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_12.wav'></audio></td>
+<td class='text-cell'>And Michael's like, <breath> yeah, yeah, yeah, yeah.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>animated</span><span class='tag'>flowing</span><span class='tag'>laughing</span><span class='tag'>singsong</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>clean environment</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span></div></td>
+<td class='description-cell'>A male speaker delivers a measured, high-pitched speech with <span class='style-tag'>animated</span> <span class='style-tag'>laughter</span>, his <span class='style-tag'>American</span> accent carrying a <span class='style-tag'>flowing</span>, <span class='style-tag'>singsong</span> quality in a clean environment.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/base_13.wav'></audio></td>
+<td class='text-cell'> Okay, gotcha, gotcha. So four o'clock actually means like six o'clock then, you know what I mean?</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>flowing</span><span class='tag'>singsong</span><span class='tag'>whispered</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>slightly noisy environment</span></div></td>
+<td class='description-cell'>In a slightly noisy environment, a male <span class='style-tag'>American</span> voice delivers a <span class='style-tag'>flowing</span>, <span class='style-tag'>singsong</span> speech with a measured speed and a high-pitched <span class='style-tag'>whisper</span>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id='psc-scaled-content' class='dataset-content'>
+<table class='dataset-table'>
+<thead><tr><th>Audio</th><th>Transcription</th><th>Rich Tags</th><th>Basic Tags</th><th>Style Prompt</th></tr></thead>
+<tbody>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_0.wav'></audio></td>
+<td class='text-cell'> That's wonderful. So I guess you're looking for a ring.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>enthusiastic</span><span class='tag'>loud</span><span class='tag'>shrill</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>very clean environment</span></div></td>
+<td class='description-cell'>A female speaker's voice is <span class='style-tag'>enthusiastic</span> and high-pitched, delivered at a measured speed in a very clean environment. The tone is <span class='style-tag'>loud</span> and can come across as <span class='style-tag'>shrill</span>.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_1.wav'></audio></td>
+<td class='text-cell'> Does that thing look good? It does, doesn't it? It's done. Amazing!</td>
+<td><div class='tag-container'><span class='tag'>admiring</span><span class='tag'>american</span><span class='tag'>confident</span><span class='tag'>enthusiastic</span><span class='tag'>happy</span><span class='tag'>husky</span><span class='tag'>raspy</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>slow speed</span><span class='basic-tag'>very noisy environment</span></div></td>
+<td class='description-cell'>A male speaker with a <span class='style-tag'>husky</span>, <span class='style-tag'>raspy</span> voice delivers <span class='style-tag'>happy</span> and <span class='style-tag'>admiring</span> remarks at a slow speed in a very noisy <span class='style-tag'>American</span> environment. His speech is <span class='style-tag'>enthusiastic</span> and <span class='style-tag'>confident</span>, with occasional high-pitched inflections.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_2.wav'></audio></td>
+<td class='text-cell'> The seed was sown long ago and it flowers beautifully.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>authoritative</span><span class='tag'>booming</span><span class='tag'>calm</span><span class='tag'>deep</span><span class='tag'>guttural</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>clean environment</span><span class='basic-tag'>low-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span></div></td>
+<td class='description-cell'>A low-pitched, <span class='style-tag'>authoritative</span> male voice with a <span class='style-tag'>guttural</span> <span class='style-tag'>American</span> accent dominates the clean environment, delivering each word with a measured, <span class='style-tag'>calm</span>, and <span class='style-tag'>deep</span> boom.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_3.wav'></audio></td>
+<td class='text-cell'> Let's get to it. Hi friends, happy, you might be expecting me to say Friday.</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>enthusiastic</span><span class='tag'>flowing</span><span class='tag'>punctuated</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>clean environment</span><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>measured speed</span></div></td>
+<td class='description-cell'>A female speaker's voice is <span class='style-tag'>enthusiastic</span> and flows smoothly, recorded in a clean <span class='style-tag'>American</span> environment. Her pitch is high, and she speaks with a <span class='style-tag'>punctuated</span>, measured speed.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_4.wav'></audio></td>
+<td class='text-cell'> When you helped someone, describe a time when you helped someone. Maybe you were working in a team at university or school or in your job and you helped one of the other team members. Use some of your vocabulary from the describe a person topic again when we were talking about teamwork and working hard.</td>
+<td><div class='tag-container'><span class='tag'>authoritative</span><span class='tag'>deep</span><span class='tag'>loud</span><span class='tag'>scottish</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>low-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>slightly clean environment</span></div></td>
+<td class='description-cell'>A <span class='style-tag'>deep-voiced</span> man speaks authoritatively with a <span class='style-tag'>Scottish</span> accent in a slightly clean environment. His speech is measured and delivered at a <span class='style-tag'>loud</span> volume with a low pitch.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_5.wav'></audio></td>
+<td class='text-cell'> So a few active friends of mine for their birthdays and for their anniversary parties or something, we did a few, uh, events for them, the decor and planning for their events. It turned out to be really successful.</td>
+<td><div class='tag-container'><span class='tag'>shrill</span><span class='tag'>indian</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>environment balanced in clarity</span><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>measured speed</span></div></td>
+<td class='description-cell'>A female speaker with an <span class='style-tag'>Indian</span> accent delivers a measured speech in a clear environment, her <span class='style-tag'>shrill</span> and high-pitched voice adding intensity.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_6.wav'></audio></td>
+<td class='text-cell'> Of whatever thing, baggage about me being either gay or dra- I don't know. Is either the drag the gay the something? Who knows? I don't know. But uhm, yeaah.</td>
+<td><div class='tag-container'><span class='tag'>confused</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>clean environment</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>slow speed</span></div></td>
+<td class='description-cell'>A male speaker's voice is slow and <span class='style-tag'>confused</span>, recorded in a clean environment with a high-pitched tone.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_7.wav'></audio></td>
+<td class='text-cell'> Who's standing in the way of progress with stupidness and arrogance and dumb shit? Is that guy?</td>
+<td><div class='tag-container'><span class='tag'>american</span><span class='tag'>angry</span><span class='tag'>authoritative</span><span class='tag'>deep</span><span class='tag'>enunciated</span><span class='tag'>flowing</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>medium-pitched</span><span class='basic-tag'>very clean environment</span></div></td>
+<td class='description-cell'>A male speaker with an <span class='style-tag'>American</span> accent delivers his words in a measured and <span class='style-tag'>authoritative</span> tone, with a medium-pitched, <span class='style-tag'>deep</span> voice that flows smoothly in a very clean environment. His speech is <span class='style-tag'>enunciated</span> clearly, expressing a sense of <span class='style-tag'>anger</span>.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_8.wav'></audio></td>
+<td class='text-cell'> I lay down beside my old man when they carried the stretcher into the hospital room and hung onto the stretcher and cried and cried, and he looked so white and gone and so awfully dead. I couldn't help feeling that if my old man was dead, maybe they didn't need to have shot Guilford. His hoof might have got well. I don't know. I love my old man so much.</td>
+<td><div class='tag-container'><span class='tag'>pained</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span><span class='basic-tag'>medium-pitched</span><span class='basic-tag'>very clean environment</span></div></td>
+<td class='description-cell'>A male voice, medium-pitched, speaks with a measured speed, conveying <span class='style-tag'>pain</span> in his tone, recorded in a very clean environment.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_9.wav'></audio></td>
+<td class='text-cell'> In your eyes, I am the most loved and loving, everyone's best friend. Perfect daughter, the perfect mother, the perfect wife, a beautiful person to know. And when I see myself reflected in your eyes, I see someone ten times the person I'll ever be. I see you.</td>
+<td><div class='tag-container'><span class='tag'>awed</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>clean environment</span><span class='basic-tag'>female</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>slow speed</span></div></td>
+<td class='description-cell'>A high-pitched female voice speaks with <span class='style-tag'>awe</span> in a clean environment at a slow speed.</td>
+</tr>
+<tr>
+<td><audio controls preload='none' src='audios/scaled_10.wav'></audio></td>
+<td class='text-cell'> Maxine Dupree's graduation in the Alpha Academy. When this graphic popped up, I cheered. Same thing. I was genuinely so thrilled. I wrote, in fact, look, recap of Maxine from last week. She's graduating tonight!</td>
+<td><div class='tag-container'><span class='tag'>admiring</span><span class='tag'>desirous</span><span class='tag'>enthusiastic</span></div></td>
+<td><div class='tag-container'><span class='basic-tag'>environment balanced in clarity</span><span class='basic-tag'>high-pitched</span><span class='basic-tag'>male</span><span class='basic-tag'>measured speed</span></div></td>
+<td class='description-cell'>A male speaker delivers a <span class='style-tag'>desirous</span> and <span class='style-tag'>admiring</span> tone in a high-pitched voice, his speech exhibiting <span class='style-tag'>enthusiastic</span> and measured speed in a clear and balanced environment.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<script>
+    function switchDatasetTab(tabName) {
+        // Hide all content
+        document.querySelectorAll('.dataset-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        // Deactivate all tabs
+        document.querySelectorAll('.dataset-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Show selected content and activate tab
+        document.getElementById(tabName + '-content').classList.add('active');
+        document.getElementById(tabName + '-tab').classList.add('active');
+    }
+
+    function switchModelTab(tabName) {
+        // Hide all content
+        document.querySelectorAll('.model-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        // Deactivate all tabs
+        document.querySelectorAll('.model-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        // Show selected content and activate tab
+        document.getElementById(tabName + '-content').classList.add('active');
+        document.getElementById(tabName + '-tab').classList.add('active');
+    }
+    </script>
+</body>
+</html>
